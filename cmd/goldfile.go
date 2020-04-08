@@ -36,6 +36,7 @@ func main() {
 	defer f.Close()
 
 	// Render the graph to the file
+	graph.SetLayout("circo")
 	err = renderer.Render(graph, graphviz.PNG, f)
 	if err != nil {
 		logrus.WithError(err).Fatal(`failed to render graph`)
