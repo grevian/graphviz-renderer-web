@@ -17,14 +17,15 @@ RUN go mod download
 COPY . ./
 
 # Run our tests before building
-# RUN go test -v ./...
+RUN go test -v ./...
 
 # Build the binary.
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -v -o server -mod=readonly --ldflags '-linkmode external -extldflags "-static"' ./cmd/server.go
-RUN chmod a+x server
 
 # last stage, move to a slimmer image to deploy
 FROM alpine:3.11
+
+# Only necessary if we want to make outbound connections to something over https
 # RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
@@ -32,4 +33,3 @@ COPY --from=builder /app/server /server
 
 # Run the web service on container startup.
 CMD ["/server"]
-# ENTRYPOINT ["/server"]
