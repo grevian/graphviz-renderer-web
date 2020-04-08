@@ -1,13 +1,9 @@
 # builder stage
 # We're going to need to match the deployment environment a little, in order to use our cgo library
-FROM golang as builder
-
-ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=amd64
+FROM golang:1.14.1-alpine3.11 as builder
 
 # Going to need gcc for the gv renderer cgo library
-# RUN apk add --update build-base
+RUN apk add --update build-base
 
 # Create and change to the app directory.
 WORKDIR /app
@@ -24,15 +20,11 @@ COPY . ./
 # RUN go test -v ./...
 
 # Build the binary.
-RUN go build -v -o server
-# RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build --ldflags '-linkmode external -extldflags "-static"' -mod=readonly -v -o server ./function.go
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -v -o server -mod=readonly --ldflags '-linkmode external -extldflags "-static"' ./cmd/server.go
 RUN chmod a+x server
-RUN ldd server | tr -s '[:blank:]' '\n' | grep '^/' | \
-    xargs -I % sh -c 'mkdir -p $(dirname ./%); cp % ./%;'
-RUN mkdir -p lib64 && cp /lib64/ld-linux-x86-64.so.2 lib64/
 
 # last stage, move to a slimmer image to deploy
-FROM golang
+FROM alpine:3.11
 # RUN apk add --no-cache ca-certificates
 
 # Copy the binary to the production image from the builder stage.
