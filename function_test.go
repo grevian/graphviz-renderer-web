@@ -54,6 +54,37 @@ func TestRenderGV(t *testing.T) {
 	assert.Equal(t, goldBytes, responseBytes)
 }
 
+func TestRenderGVWithGVPrefix(t *testing.T) {
+	// Construct our test request
+	form := url.Values{}
+	form.Add(`cht`, `gv:circo`)
+	form.Add(`chof`, `png`)
+	form.Add(`chl`, testGraph)
+	req, err := http.NewRequest(http.MethodPost, `/chart`, strings.NewReader(form.Encode()))
+	req.Header.Set(`Content-Type`, `application/x-www-form-urlencoded`)
+	require.NoError(t, err)
+
+	// Construct a response recorder
+	rr := httptest.NewRecorder()
+
+	// Execute our request
+	handler := http.HandlerFunc(RenderGV)
+	handler.ServeHTTP(rr, req)
+
+	// Ensure we got an expected response code
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Compare the expected response against a file created ahead of time with the same input
+	responseBytes, err := ioutil.ReadAll(rr.Body)
+	require.NoError(t, err)
+
+	require.FileExists(t, `goldfile.png`)
+	goldBytes, err := ioutil.ReadFile(`goldfile.png`)
+	require.NoError(t, err)
+
+	assert.Equal(t, goldBytes, responseBytes)
+}
+
 func TestRenderGVMissingCHT(t *testing.T) {
 	// Construct our test request
 	form := url.Values{}
@@ -164,5 +195,5 @@ func TestRenderGVBrokenCHL(t *testing.T) {
 	responseBytes, err := ioutil.ReadAll(rr.Body)
 	require.NoError(t, err)
 
-	assert.Equal(t, `failed to render input`, string(responseBytes))
+	assert.Equal(t, `failed to parse input`, string(responseBytes))
 }
