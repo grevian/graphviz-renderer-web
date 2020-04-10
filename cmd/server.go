@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"os"
 
-	gvRender "graphviz-renderer-web"
+	"graphviz-renderer-web/server"
 )
 
 func main() {
 	log.Print("Chart server starting up")
 
-	http.HandleFunc("/chart", gvRender.RenderGV)
+	http.HandleFunc("/chart", server.RenderGV)
 
 	port := os.Getenv("PORT")
 	if port == "" {

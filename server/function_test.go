@@ -1,4 +1,4 @@
-package gvRender
+package server
 
 import (
 	"io/ioutil"
