@@ -9,7 +9,7 @@ marked deprecated in 2012, and being "turned off" in 2019
 ## How does it work?
 
 Run the server or deploy the docker container and make `POST` requests to `service:8080/chart` with a 
-`Content-Type` header of `application/x-www-form-urlencoded` body containing the following 3 parameters
+`Content-Type` header of `application/x-www-form-urlencoded` and a body containing the following 3 parameters
 * `chof` Output format, must be `png` for now
 * `cht` Chart type, can be one of circo, dot, fdp, neato, nop, nop1, nop2, osage, patchwork, sfdp, twopi
    * See the [Layout Manual Pages](https://www.graphviz.org/documentation/) in the graphviz documentation for details
