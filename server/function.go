@@ -25,6 +25,7 @@ var supportedCharts = map[string]bool{
 }
 
 func RenderGV(w http.ResponseWriter, r *http.Request) {
+	// These mappings help logrus better integrate with cloud run log formatting
 	logrus.SetFormatter(&logrus.JSONFormatter{
 		FieldMap: logrus.FieldMap{
 			logrus.FieldKeyTime:  "time",
@@ -32,9 +33,9 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 			logrus.FieldKeyMsg:   "message",
 		},
 	})
-
 	entry := logrus.NewEntry(logrus.StandardLogger())
 
+	// Parse the form that should be on the request
 	if err := r.ParseForm(); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, fmt.Sprintf(`failed to parse request body: %s`, err.Error()))
@@ -88,6 +89,7 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Something internal to the graphviz libraries can return a nil graph and no error sometimes
 	if graph == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		io.WriteString(w, `failed to parse input`)
