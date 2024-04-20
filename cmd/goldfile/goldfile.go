@@ -1,3 +1,4 @@
+//go:build goldfile
 // +build goldfile
 
 package main
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// Create our output file
-	f, err := os.Create(`./goldfile.png`)
+	f, err := os.Create(`/output/goldfile.png`)
 	if err != nil {
 		logrus.WithError(err).Fatal(`failed to create goldfile output`)
 	}

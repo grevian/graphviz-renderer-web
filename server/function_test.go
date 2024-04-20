@@ -1,10 +1,12 @@
 package server
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -75,14 +77,14 @@ func TestRenderGVWithGVPrefix(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Compare the expected response against a file created ahead of time with the same input
-	responseBytes, err := ioutil.ReadAll(rr.Body)
+	responseBytes, err := io.ReadAll(rr.Body)
 	require.NoError(t, err)
 
 	require.FileExists(t, `goldfile.png`)
-	goldBytes, err := ioutil.ReadFile(`goldfile.png`)
+	goldBytes, err := os.ReadFile(`goldfile.png`)
 	require.NoError(t, err)
 
-	assert.Equal(t, goldBytes, responseBytes)
+	assert.Equal(t, goldBytes, responseBytes, "Response did not match goldfile")
 }
 
 func TestRenderGVMissingCHT(t *testing.T) {
