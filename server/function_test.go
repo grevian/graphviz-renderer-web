@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +27,7 @@ graph {
 }
 `
 
-func TestRenderGV(t *testing.T) {
+func TestRenderGVForm(t *testing.T) {
 	// Construct our test request
 	form := url.Values{}
 	form.Add(`cht`, `circo`)
@@ -46,11 +48,46 @@ func TestRenderGV(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 
 	// Compare the expected response against a file created ahead of time with the same input
-	responseBytes, err := ioutil.ReadAll(rr.Body)
+	responseBytes, err := io.ReadAll(rr.Body)
 	require.NoError(t, err)
 
 	require.FileExists(t, `goldfile.png`)
-	goldBytes, err := ioutil.ReadFile(`goldfile.png`)
+	goldBytes, err := os.ReadFile(`goldfile.png`)
+	require.NoError(t, err)
+
+	assert.Equal(t, goldBytes, responseBytes)
+}
+
+func TestRenderGVBody(t *testing.T) {
+	// Construct our test request
+	testRequest := graphRequest{
+		Cht:  `circo`,
+		Chl:  testGraph,
+		Chof: `png`,
+	}
+	testRequestBytes, err := json.Marshal(testRequest)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, `/chart`, bytes.NewReader(testRequestBytes))
+	req.Header.Set(`Content-Type`, `application/json`)
+	require.NoError(t, err)
+
+	// Construct a response recorder
+	rr := httptest.NewRecorder()
+
+	// Execute our request
+	handler := http.HandlerFunc(RenderGV)
+	handler.ServeHTTP(rr, req)
+
+	// Ensure we got an expected response code
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Compare the expected response against a file created ahead of time with the same input
+	responseBytes, err := io.ReadAll(rr.Body)
+	require.NoError(t, err)
+
+	require.FileExists(t, `goldfile.png`)
+	goldBytes, err := os.ReadFile(`goldfile.png`)
 	require.NoError(t, err)
 
 	assert.Equal(t, goldBytes, responseBytes)
