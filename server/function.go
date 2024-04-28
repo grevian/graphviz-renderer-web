@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/goccy/go-graphviz"
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,12 @@ var supportedCharts = map[string]bool{
 	`twopi`:     true,
 }
 
+type graphRequest struct {
+	Cht  string `json:"cht"`  // Chart Type
+	Chl  string `json:"chl"`  // Chart Language definition
+	Chof string `json:"chof"` // Chart Output format
+}
+
 func RenderGV(w http.ResponseWriter, r *http.Request) {
 	// These mappings help logrus better integrate with cloud run log formatting
 	logrus.SetFormatter(&logrus.JSONFormatter{
@@ -35,17 +42,21 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 	})
 	entry := logrus.NewEntry(logrus.StandardLogger())
 
-	// Parse the form that should be on the request
-	if err := r.ParseForm(); err != nil {
+	request, err := readPayload(r)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, fmt.Sprintf(`failed to parse request body: %s`, err.Error()))
-		entry.WithError(err).Error(`failed to parse request body`)
-		return
+		io.WriteString(w, err.Error())
+		entry.WithError(err).Error(`failed to read request payload`)
 	}
+	entry = entry.WithFields(logrus.Fields{
+		"Chl":  request.Chl,
+		"Chof": request.Chof,
+		"Cht":  request.Cht,
+	})
 
 	// Chart Type, must be supported by https://github.com/goccy/go-graphviz
 	// so one of circo dot fdp neato nop nop1 nop2 osage patchwork sfdp twopi
-	chartType := r.Form.Get(`cht`)
+	chartType := request.Cht
 
 	// Maintaining google charts api compatibility may mean a gv prefix on cht, remove it if we find it
 	if strings.HasPrefix(chartType, `gv:`) {
@@ -62,7 +73,7 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Output Format, we only support png right now
-	outputFormat := r.Form.Get(`chof`)
+	outputFormat := request.Chof
 	entry = entry.WithField(`outputFormat`, outputFormat)
 	if outputFormat != `png` {
 		w.WriteHeader(http.StatusBadRequest)
@@ -72,7 +83,7 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Chart dot lang input, html escaped
-	chartInput := r.Form.Get(`chl`)
+	chartInput := request.Chl
 	if strings.TrimSpace(chartInput) == `` {
 		w.WriteHeader(http.StatusBadRequest)
 		io.WriteString(w, `chart definition ('chl') must not be empty`)
@@ -112,4 +123,45 @@ func RenderGV(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entry.Info(`OK`)
+}
+
+func readPayload(r *http.Request) (graphRequest, error) {
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		return parseJsonBody(r)
+	} else if contentType == "application/x-www-form-urlencoded" {
+		return parseFormBody(r)
+	} else {
+		return graphRequest{}, fmt.Errorf("unexpected content-type: %s", contentType)
+	}
+}
+
+func parseJsonBody(r *http.Request) (graphRequest, error) {
+	// Read the request body, then deserialize it
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		return graphRequest{}, fmt.Errorf("failed to read request body: %w", err)
+	}
+	var request graphRequest
+	err = json.Unmarshal(bodyBytes, &request)
+	if err != nil {
+		return graphRequest{}, fmt.Errorf("failed to parse request body: %w", err)
+	}
+
+	return request, nil
+}
+
+func parseFormBody(r *http.Request) (graphRequest, error) {
+	// Read the request form
+	err := r.ParseForm()
+	if err != nil {
+		return graphRequest{}, fmt.Errorf("failed to parse request form: %w", err)
+	}
+
+	var request graphRequest
+	request.Chl = r.Form.Get("chl")
+	request.Cht = r.Form.Get("cht")
+	request.Chof = r.Form.Get("chof")
+
+	return request, nil
 }
