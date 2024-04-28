@@ -1,0 +1,22 @@
+# Build a container to regenerate the goldfile(s) when the renderer is modified
+FROM golang:1.22.2-alpine3.19 as builder
+
+# Going to need gcc for the gv renderer cgo library
+RUN apk add --update build-base
+
+# Create and change to the app directory.
+WORKDIR /app
+
+# Retrieve application dependencies.
+# This allows the container build to reuse cached dependencies.
+COPY go.* ./
+RUN go mod download
+
+# Copy local code to the container image.
+COPY . ./
+
+RUN go build -tags goldfile -o /app/build-goldfile ./cmd/goldfile
+
+VOLUME /output
+
+CMD ["/app/build-goldfile"]
